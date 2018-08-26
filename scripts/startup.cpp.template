@@ -1,0 +1,108 @@
+#include <DEVICE_startup.h>
+
+static IRQ defaultRegistration;
+
+IRQ* IRQ::irqRegistrationTable[PERIPHERAL_IRQS] = {
+};
+
+// Cortex-M4 Exceptions: //
+void IRQ::Reset_Handler(void)
+{
+	/*
+		Copy initialization data from flash into SRAM:
+	 */
+	uint32_t *src, *dst;
+	src = &__etext;
+	for(dst = &__data_start__; dst < &__data_end__; )
+	{
+		*dst++ = *src++;
+	}
+	/*
+		Zero out BSS (RAM):
+	 */
+	for(dst = &__bss_start__; dst < &__bss_end__;)
+	{
+		*dst++ = 0U;
+	}
+	main();
+	while(1);
+}
+
+void IRQ::NMI_Handler(void)
+{
+	while(1);
+}
+
+void IRQ::HardFault_Handler(void)
+{
+	while(1);
+}
+
+void IRQ::MemManage_Handler(void)
+{
+	while(1);
+}
+
+void IRQ::BusFault_Handler(void)
+{
+	while(1);
+}
+
+void IRQ::UsageFault_Handler(void)
+{
+	while(1);
+}
+
+void IRQ::SVC_Handler(void)
+{
+	while(1);
+}
+
+void IRQ::DebugMon_Handler(void)
+{
+	while(1);
+}
+
+void IRQ::PendSV_Handler(void)
+{
+	while(1);
+}
+
+void IRQ::SysTick_Handler(void)
+{
+	while(1);
+}
+
+// DEVICE Exceptions: //
+
+// Class-wide methods: //
+void IRQ::registerInterrupt(int nInterrupt, IRQ *thisPtr)
+{
+	irqRegistrationTable[nInterrupt] = thisPtr;
+}
+
+// User-defined interrupt implementation (default infinite loop to preserve system state): //
+void IRQ::ISR(void)
+{
+	while(1);
+}
+
+void* isr_vectors[] __attribute__ ((section(".isr_vector"))) = {
+	&__StackTop,
+	IRQ::Reset_Handler,
+	IRQ::NMI_Handler,
+	IRQ::HardFault_Handler,
+	IRQ::MemManage_Handler,
+	IRQ::BusFault_Handler,
+	IRQ::UsageFault_Handler,
+	0,
+	0,
+	0,
+	0,
+	IRQ::SVC_Handler,
+	IRQ::DebugMon_Handler,
+	0,
+	IRQ::PendSV_Handler,
+	IRQ::SysTick_Handler,
+	// Jump addresses for DEVICE interrupts: //
+};

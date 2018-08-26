@@ -1,0 +1,30 @@
+#pragma once
+#include <stdint.h>
+
+#define PERIPHERAL_IRQS nExceptions
+
+extern uint32_t __data_start__, __data_end__, __bss_start__, __bss_end__, __etext;
+extern int main();
+extern uint32_t __StackTop;
+
+class IRQ {
+public:
+	// Cortex-M4 Exceptions: //
+	static void Reset_Handler(void);
+	static void NMI_Handler(void);
+	static void HardFault_Handler(void);
+	static void MemManage_Handler(void);
+	static void BusFault_Handler(void);
+	static void UsageFault_Handler(void);
+	static void SVC_Handler(void);
+	static void DebugMon_Handler(void);
+	static void PendSV_Handler(void);
+	static void SysTick_Handler(void);
+	// DEVICE Exceptions: //
+	// Class-wide methods: //
+	static void registerInterrupt(int nInterrupt, IRQ *thisPtr);
+	// User-defined interrupt implementation: //
+	virtual void ISR(void);
+private:
+	static IRQ* irqRegistrationTable[PERIPHERAL_IRQS];
+};

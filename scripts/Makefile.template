@@ -1,0 +1,83 @@
+# Based on https://github.com/sergioprado/bare-metal-arm/blob/master/Makefile
+# But heavily-edited for our purposes:
+# (c) Abhimanyu Ghosh, 2016-2018
+TOOLCHAIN_ROOT=
+TOOLCHAIN=$(TOOLCHAIN_ROOT)/bin/
+PREFIX=arm-none-eabi-
+# PREFIX=$(TOOLCHAIN)/arm-none-eabi-
+
+ARCHFLAGS=-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -fsingle-precision-constant 
+CFLAGS=-nostdlib -ffunction-sections -I./inc -I./inc/hal_interface -g -Os -Wall 
+CXXFLAGS=-fpermissive -std=c++11 -nostdlib -ffunction-sections -fno-rtti -fno-exceptions -fno-unwind-tables -I./inc -I./inc/hal_interface -g -Os -Wall 
+LDFLAGS=--specs=nosys.specs -Wl,--gc-sections,-Map,$(TARGET).map,-Tlinker.ld
+LDFLAGS+=$(ARCHFLAGS)
+
+CC=$(PREFIX)gcc
+CXX=$(PREFIX)g++
+LD=$(PREFIX)g++
+GDB=$(PREFIX)gdb
+OBJCOPY=$(PREFIX)objcopy
+SIZE=$(PREFIX)size
+RM=rm -f
+
+TARGET=proj_target
+
+USER_SRC=$(wildcard src/*.c)
+USER_SRC_CPP=$(wildcard src/*.cpp)
+USER_SRC+=$(wildcard src/hal_interface/*.c)
+USER_SRC_CPP+=$(wildcard src/hal_interface/*.cpp)
+USER_ASM_SRC=$(wildcard src/*.s)
+
+TARGET_OBJ=$(TARGET).o
+USER_OBJ=$(patsubst %.c, %.o, $(USER_SRC))
+USER_OBJ+=$(patsubst %.cpp, %.o, $(USER_SRC_CPP))
+
+TARGET_DEPS:=$(TARGET_OBJ:.o=.d)
+USER_DEPS:=$(USER_OBJ:.o=.d)
+
+all: build size
+build: elf srec bin 
+elf: $(TARGET).elf
+srec: $(TARGET).srec
+bin: $(TARGET).bin
+md5sums: all
+	md5sum $(TARGET).elf > user_app_md5sum
+check: all
+	md5sum $(TARGET).elf > tmp && diff tmp user_app_md5sum && rm tmp
+load: all
+	./load_target.sh $(TOOLCHAIN)
+dfu: all
+	dfu-util -a 0 --dfuse-address 0x08000000 -D $(TARGET).bin
+bmp: all
+	$(GDB) --batch --command=runme_bmp.gdb 
+
+clean:
+	$(RM) $(TARGET_OBJ) $(TARGET_DEPS) $(USER_OBJ) $(USER_DEPS) $(TARGET).srec $(TARGET).elf $(TARGET).bin $(TARGET).map 
+
+$(TARGET).elf: $(TARGET_OBJ) $(USER_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $(TARGET_OBJ) $(USER_OBJ) -lm -lc
+
+%.o: %.s
+	$(CC) -c $(ARCHFLAGS) $(CFLAGS) -o $@ $<
+
+-include $(TARGET_DEPS)
+-include $(USER_DEPS)
+
+%.o: %.c
+	$(CC) $(ARCHFLAGS) $(CFLAGS) -MM -MT $@ -MF $(patsubst %.o,%.d,$@) $<
+	$(CC) $(ARCHFLAGS) $(CFLAGS) -c -o $@ $<
+
+%.o: %.cpp
+	$(CXX) $(ARCHFLAGS) $(CXXFLAGS) -MM -MT $@ -MF $(patsubst %.o,%.d,$@) $<
+	$(CXX) $(ARCHFLAGS) $(CXXFLAGS) -c -o $@ $<
+
+%.srec: %.elf
+	$(OBJCOPY) -O srec $< $@
+
+%.bin: %.elf
+	    $(OBJCOPY) -O binary $< $@
+
+size: $(TARGET).elf
+	$(SIZE) $(TARGET).elf
+
+.PHONY: clean
