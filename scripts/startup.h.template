@@ -1,5 +1,5 @@
 #pragma once
-#include <stdint.h>
+#include <cstdint>
 
 #define PERIPHERAL_IRQS nExceptions
 
@@ -9,6 +9,15 @@ extern uint32_t __StackTop;
 
 class IRQ {
 public:
+	/*
+		Enum containing offsets of user-registered Core/Peripheral IRQ handlers,
+		starting with the SysTick handler.
+		NOTE: All handlers BELOW the Systick (i.e. exceptions from Reset to PendSV)
+		are intentionally left to be hand-populated!
+	 */
+	typedef enum {
+		IRQOFFSET0	
+	} irqTableOffset;
 	// Cortex-M4 Exceptions: //
 	static void Reset_Handler(void);
 	static void NMI_Handler(void);
@@ -22,7 +31,7 @@ public:
 	static void SysTick_Handler(void);
 	// DEVICE Exceptions: //
 	// Class-wide methods: //
-	static void registerInterrupt(int nInterrupt, IRQ *thisPtr);
+	static void registerInterrupt(irqTableOffset irq, IRQ *thisPtr);
 	// User-defined interrupt implementation: //
 	virtual void ISR(void);
 private:

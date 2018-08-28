@@ -70,15 +70,15 @@ void IRQ::PendSV_Handler(void)
 
 void IRQ::SysTick_Handler(void)
 {
-	while(1);
+	irqRegistrationTable[IRQ::SysTick_IRQoffset]->ISR();
 }
 
 // DEVICE Exceptions: //
 
 // Class-wide methods: //
-void IRQ::registerInterrupt(int nInterrupt, IRQ *thisPtr)
+void IRQ::registerInterrupt(irqTableOffset irq, IRQ *thisPtr)
 {
-	irqRegistrationTable[nInterrupt] = thisPtr;
+	irqRegistrationTable[irq] = thisPtr;
 }
 
 // User-defined interrupt implementation (default infinite loop to preserve system state): //

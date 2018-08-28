@@ -123,26 +123,36 @@ class DeviceStartup:
 
 		for hdr_line in hdr_outbuf:
 			if "#define PERIPHERAL_IRQS nExceptions" in hdr_line:
-				intvects_hdr_file.write(hdr_line.replace("nExceptions", str(len(vectorTable))))
+				intvects_hdr_file.write(hdr_line.replace("nExceptions", str(len(vectorTable)+1)))
 			else:
-				if "// DEVICE Exceptions: //" in hdr_line:
-					intvects_hdr_file.write("\r\n	// %s Exceptions: //\r\n" % devObj.name)
+				if "IRQOFFSET0" in hdr_line:
+					intvects_hdr_file.write("		SysTick_IRQoffset=0,\r\n")
 					for i in range(len(vectorTable)):
 						if vectorTable[i] != 'NULL':
-							intvects_hdr_file.write("    static void "+vectorTable[i]+"_handler(void);\r\n")							
+							intvects_hdr_file.write("		%s_IRQoffset=%d" % (vectorTable[i], i+1))
+							if i < len(vectorTable)-1:
+								intvects_hdr_file.write(",\r\n")
+							else:
+								intvects_hdr_file.write("\r\n")
 				else:
-					intvects_hdr_file.write(hdr_line)
+					if "// DEVICE Exceptions: //" in hdr_line:
+						intvects_hdr_file.write("\r\n	// %s Exceptions: //\r\n" % devObj.name)
+						for i in range(len(vectorTable)):
+							if vectorTable[i] != 'NULL':
+								intvects_hdr_file.write("    static void "+vectorTable[i]+"_handler(void);\r\n")							
+					else:
+						intvects_hdr_file.write(hdr_line)
 
 
 		for line in outbuf:
 			if "#include <DEVICE_startup.h>" in line:
 				intvects_file.write(line.replace("DEVICE", devObj.name, 1))
 			else:
-				if "IRQ* IRQ::irqRegistrationTable[PERIPHERAL_IRQS] = {" in line:
+				if "IRQ* IRQ::irqRegistrationTable" in line:
 					intvects_file.write(line)
-					for j in range(len(vectorTable)):
+					for j in range(len(vectorTable)+1):
 						intvects_file.write("	&defaultRegistration")
-						if j < len(vectorTable)-1:
+						if j < len(vectorTable):
 							intvects_file.write(",\r\n")
 						else:
 							intvects_file.write("\r\n")
@@ -151,7 +161,7 @@ class DeviceStartup:
 						intvects_file.write(line.replace("DEVICE", devObj.name))
 						for vector in range(len(vectorTable)):
 							if vectorTable[vector] != 'NULL':
-								intvects_file.write("void IRQ::%s_handler(void)\r\n{\r\n    irqRegistrationTable[%d]->ISR();\r\n}\r\n\r\n" % (vectorTable[vector], vector))
+								intvects_file.write("void IRQ::%s_handler(void)\r\n{\r\n    irqRegistrationTable[IRQ::%s_IRQoffset]->ISR();\r\n}\r\n\r\n" % (vectorTable[vector], vectorTable[vector]))
 					else:
 						if "// Jump addresses for DEVICE interrupts: //" in line:
 							intvects_file.write(line.replace("DEVICE", devObj.name))
@@ -209,7 +219,7 @@ def main():
 
 	f=open(os.path.join(args.project[0], "inc", outfile), "w+")
 	f.write("#pragma once\r\n")
-	f.write("#include <stdint.h>\r\n")
+	f.write("#include <cstdint>\r\n")
 	f.write("#include <reg.h>\r\n")
 	f.write("\r\nnamespace %s {\r\n" % dev.name)
 
@@ -224,8 +234,7 @@ def main():
 	shutil.copyfile("load_target.sh.template", os.path.join(args.project[0],'load_target.sh'))
 	shutil.copyfile("target.cfg.template", os.path.join(args.project[0],'target.cfg'))
 	shutil.copyfile("linker.template", os.path.join(args.project[0],'linker.ld'))
-	# shutil.copyfile("runme.gdb.template", os.path.join(args.project[0],'runme.gdb'))
-	# shutil.copyfile("Makefile.template", os.path.join(args.project[0],'Makefile'))
+
 	subst_target('runme.gdb.template', os.path.join(args.project[0],'runme.gdb'), getProjName(args.project[0]))
 	subst_target('Makefile.template', os.path.join(args.project[0],'Makefile'), getProjName(args.project[0]))
 
